@@ -21,7 +21,7 @@ def parse_opt():
     parser.add_argument(
         '--video_info',
         type=str,
-        default="./data/activitynet_annotations/video_info_new.csv")
+        default="./data/activitynet_annotations/video_info_new_new.csv")
     parser.add_argument(
         '--video_anno',
         type=str,
@@ -39,7 +39,7 @@ def parse_opt():
     parser.add_argument(
         '--feature_path',
         type=str,
-        default="./data/activitynet_feature_cuhk/")
+        default="/home/yhzhai/PycharmProjects/")
 
     # PEM Dataset settings
     parser.add_argument(
@@ -95,7 +95,7 @@ def parse_opt():
     parser.add_argument(
         '--tem_batch_size',
         type=int,
-        default=16)
+        default=8)
     parser.add_argument(
         '--tem_match_thres',
         type=float,
@@ -125,7 +125,7 @@ def parse_opt():
     parser.add_argument(
         '--pem_batch_size',
         type=int,
-        default=16)
+        default=8)
     parser.add_argument(
         '--pem_u_ratio_m',
         type=float,

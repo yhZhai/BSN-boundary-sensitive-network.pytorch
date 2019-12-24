@@ -64,7 +64,7 @@ class VideoDataSet(data.Dataset):
         return video_data, anchor_xmin, anchor_xmax
 
     def _get_train_label(self, index, anchor_xmin, anchor_xmax):
-        video_name = self.video_list[index]
+        video_name = list(self.video_list)[index]
         video_info = self.video_dict[video_name]
         video_frame = video_info['duration_frame']
         video_second = video_info['duration_second']
@@ -151,7 +151,7 @@ class ProposalDataSet(data.Dataset):
         return len(self.video_list)
 
     def __getitem__(self, index):
-        video_name = self.video_list[index]
+        video_name = list(self.video_list)[index]
         pdf = pandas.read_csv("./output/PGM_proposals/" + video_name + ".csv")
         pdf = pdf[:self.top_K]
         video_feature = numpy.load("./output/PGM_feature/" + video_name + ".npy")

@@ -137,8 +137,8 @@ def BSN_Train_TEM(opt):
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=opt["tem_step_size"], gamma=opt["tem_step_gamma"])
 
     for epoch in range(opt["tem_epoch"]):
-        scheduler.step()
         train_TEM(train_loader, model, optimizer, epoch, writer, opt)
+        scheduler.step()
         test_TEM(test_loader, model, epoch, writer, opt)
     writer.close()
 
@@ -166,8 +166,8 @@ def BSN_Train_PEM(opt):
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=opt["pem_step_size"], gamma=opt["pem_step_gamma"])
 
     for epoch in range(opt["pem_epoch"]):
-        scheduler.step()
         train_PEM(train_loader, model, optimizer, epoch, writer, opt)
+        scheduler.step()
         test_PEM(test_loader, model, epoch, writer, opt)
 
     writer.close()
