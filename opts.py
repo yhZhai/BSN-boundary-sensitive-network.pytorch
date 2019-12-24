@@ -16,7 +16,7 @@ def parse_opt():
         '--checkpoint_path',
         type=str,
         default='./checkpoint')
-        
+
     # Overall Dataset settings
     parser.add_argument(
         '--video_info',
@@ -26,7 +26,7 @@ def parse_opt():
         '--video_anno',
         type=str,
         default="./data/activitynet_annotations/anet_anno_action.json")
-    
+
     # TEM Dataset settings
     parser.add_argument(
         '--temporal_scale',
@@ -40,7 +40,7 @@ def parse_opt():
         '--feature_path',
         type=str,
         default="./data/activitynet_feature_cuhk/")
-    
+
     # PEM Dataset settings
     parser.add_argument(
         '--pem_top_K',
@@ -61,7 +61,6 @@ def parse_opt():
         type=int,
         default=512)
 
-
     # PEM model settings
     parser.add_argument(
         '--pem_feat_dim',
@@ -71,7 +70,7 @@ def parse_opt():
         '--pem_hidden_dim',
         type=int,
         default=256)
-    
+
     # TEM Training settings
     parser.add_argument(
         '--tem_training_lr',
@@ -158,7 +157,7 @@ def parse_opt():
     parser.add_argument(
         '--pgm_thread',
         type=int,
-        default=8)	
+        default=8)
     parser.add_argument(
         '--num_sample_start',
         type=int,
@@ -170,7 +169,7 @@ def parse_opt():
     parser.add_argument(
         '--num_sample_action',
         type=int,
-        default=16) # num_sample_start + end + action should equal to pem_feat_dim
+        default=16)  # num_sample_start + end + action should equal to pem_feat_dim
     parser.add_argument(
         '--num_sample_interpld',
         type=int,
