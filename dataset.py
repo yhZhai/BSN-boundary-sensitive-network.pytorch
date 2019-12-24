@@ -40,8 +40,7 @@ class VideoDataSet(data.Dataset):
             if self.subset in video_subset:
                 self.video_dict[video_name] = video_info
         self.video_list = self.video_dict.keys()
-        print
-        "%s subset video numbers: %d" % (self.subset, len(self.video_list))
+        print("%s subset video numbers: %d" % (self.subset, len(self.video_list)))
 
     def __getitem__(self, index):
         video_data, anchor_xmin, anchor_xmax = self._get_base_data(index)

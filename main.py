@@ -17,6 +17,7 @@ import pandas as pd
 from pgm import PGM_proposal_generation, PGM_feature_generation
 from post_processing import BSN_post_processing
 from eval import evaluation_proposal
+from utils import AverageMeter
 
 
 def train_TEM(data_loader, model, optimizer, epoch, writer, opt):
@@ -25,6 +26,7 @@ def train_TEM(data_loader, model, optimizer, epoch, writer, opt):
     epoch_start_loss = 0
     epoch_end_loss = 0
     epoch_cost = 0
+    losses = AverageMeter()
     for n_iter, (input_data, label_action, label_start, label_end) in enumerate(data_loader):
         TEM_output = model(input_data)
         loss = TEM_loss_function(label_action, label_start, label_end, TEM_output, opt)
@@ -33,11 +35,15 @@ def train_TEM(data_loader, model, optimizer, epoch, writer, opt):
         optimizer.zero_grad()
         cost.backward()
         optimizer.step()
+        losses.update(cost.item())
 
         epoch_action_loss += loss["loss_action"].cpu().detach().numpy()
         epoch_start_loss += loss["loss_start"].cpu().detach().numpy()
         epoch_end_loss += loss["loss_end"].cpu().detach().numpy()
         epoch_cost += loss["cost"].cpu().detach().numpy()
+
+        if (n_iter + 1) % opt['print_freq'] == 0:
+            print('[TRAIN] Epoch {}, iter {} / {}, loss: {}'.format(epoch, n_iter + 1, len(data_loader), losses.avg))
 
     writer.add_scalars('data/action', {'train': epoch_action_loss / (n_iter + 1)}, epoch)
     writer.add_scalars('data/start', {'train': epoch_start_loss / (n_iter + 1)}, epoch)
@@ -56,13 +62,19 @@ def test_TEM(data_loader, model, epoch, writer, opt):
     epoch_start_loss = 0
     epoch_end_loss = 0
     epoch_cost = 0
-    for n_iter, (input_data, label_action, label_start, label_end) in enumerate(data_loader):
-        TEM_output = model(input_data)
-        loss = TEM_loss_function(label_action, label_start, label_end, TEM_output, opt)
-        epoch_action_loss += loss["loss_action"].cpu().detach().numpy()
-        epoch_start_loss += loss["loss_start"].cpu().detach().numpy()
-        epoch_end_loss += loss["loss_end"].cpu().detach().numpy()
-        epoch_cost += loss["cost"].cpu().detach().numpy()
+    losses = AverageMeter()
+    with torch.no_grad():
+        for n_iter, (input_data, label_action, label_start, label_end) in enumerate(data_loader):
+            TEM_output = model(input_data)
+            loss = TEM_loss_function(label_action, label_start, label_end, TEM_output, opt)
+            epoch_action_loss += loss["loss_action"].cpu().detach().numpy()
+            epoch_start_loss += loss["loss_start"].cpu().detach().numpy()
+            epoch_end_loss += loss["loss_end"].cpu().detach().numpy()
+            epoch_cost += loss["cost"].cpu().detach().numpy()
+
+            losses.update(loss["cost"].item())
+            if (n_iter + 1) % opt['print_freq'] == 0:
+                print('[TEST] Epoch {}, iter {} / {}, loss: {}'.format(epoch, n_iter + 1, len(data_loader), losses.avg))
 
     writer.add_scalars('data/action', {'test': epoch_action_loss / (n_iter + 1)}, epoch)
     writer.add_scalars('data/start', {'test': epoch_start_loss / (n_iter + 1)}, epoch)
@@ -123,16 +135,17 @@ def BSN_Train_TEM(opt):
     writer = SummaryWriter()
     model = TEM(opt)
     model = torch.nn.DataParallel(model, device_ids=[0]).cuda()
-
+    state_dict = torch.load('checkpoint/tem_best.pth.tar')['state_dict']
+    model.load_state_dict(state_dict)
     optimizer = optim.Adam(model.parameters(), lr=opt["tem_training_lr"], weight_decay=opt["tem_weight_decay"])
 
     train_loader = torch.utils.data.DataLoader(VideoDataSet(opt, subset="train"),
                                                batch_size=model.module.batch_size, shuffle=True,
-                                               num_workers=8, pin_memory=True, drop_last=True)
+                                               num_workers=4, pin_memory=True, drop_last=False)
 
     test_loader = torch.utils.data.DataLoader(VideoDataSet(opt, subset="validation"),
                                               batch_size=model.module.batch_size, shuffle=False,
-                                              num_workers=8, pin_memory=True, drop_last=True)
+                                              num_workers=4, pin_memory=True, drop_last=False)
 
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=opt["tem_step_size"], gamma=opt["tem_step_gamma"])
 
@@ -157,11 +170,11 @@ def BSN_Train_PEM(opt):
 
     train_loader = torch.utils.data.DataLoader(ProposalDataSet(opt, subset="train"),
                                                batch_size=model.module.batch_size, shuffle=True,
-                                               num_workers=8, pin_memory=True, drop_last=True, collate_fn=collate_fn)
+                                               num_workers=4, pin_memory=True, drop_last=True, collate_fn=collate_fn)
 
     test_loader = torch.utils.data.DataLoader(ProposalDataSet(opt, subset="validation"),
                                               batch_size=model.module.batch_size, shuffle=True,
-                                              num_workers=8, pin_memory=True, drop_last=True, collate_fn=collate_fn)
+                                              num_workers=4, pin_memory=True, drop_last=True, collate_fn=collate_fn)
 
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=opt["pem_step_size"], gamma=opt["pem_step_gamma"])
 
@@ -183,10 +196,10 @@ def BSN_inference_TEM(opt):
 
     test_loader = torch.utils.data.DataLoader(VideoDataSet(opt, subset="full"),
                                               batch_size=model.module.batch_size, shuffle=False,
-                                              num_workers=8, pin_memory=True, drop_last=False)
+                                              num_workers=4, pin_memory=True, drop_last=False)
 
     columns = ["action", "start", "end", "xmin", "xmax"]
-    for index_list, input_data, anchor_xmin, anchor_xmax in test_loader:
+    for i, (index_list, input_data, anchor_xmin, anchor_xmax) in enumerate(test_loader):
 
         TEM_output = model(input_data).detach().cpu().numpy()
         batch_action = TEM_output[:, 0, :]
@@ -198,13 +211,16 @@ def BSN_inference_TEM(opt):
         anchor_xmax = np.array([x.numpy()[0] for x in anchor_xmax])
 
         for batch_idx, full_idx in enumerate(index_list):
-            video = test_loader.dataset.video_list[full_idx]
+            video = list(test_loader.dataset.video_list)[full_idx]
             video_action = batch_action[batch_idx]
             video_start = batch_start[batch_idx]
             video_end = batch_end[batch_idx]
             video_result = np.stack((video_action, video_start, video_end, anchor_xmin, anchor_xmax), axis=1)
             video_df = pd.DataFrame(video_result, columns=columns)
             video_df.to_csv("./output/TEM_results/" + video + ".csv", index=False)
+
+        if (i + 1) % opt['print_freq'] == 0:
+            print('[INFERENCE] iter {} / {}'.format(i + 1, len(test_loader)))
 
 
 def BSN_inference_PEM(opt):
@@ -217,7 +233,7 @@ def BSN_inference_PEM(opt):
 
     test_loader = torch.utils.data.DataLoader(ProposalDataSet(opt, subset=opt["pem_inference_subset"]),
                                               batch_size=model.module.batch_size, shuffle=False,
-                                              num_workers=8, pin_memory=True, drop_last=False)
+                                              num_workers=4, pin_memory=True, drop_last=False)
 
     for idx, (video_feature, video_xmin, video_xmax, video_xmin_score, video_xmax_score) in enumerate(test_loader):
         video_name = test_loader.dataset.video_list[idx]
