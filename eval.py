@@ -2,7 +2,7 @@
 import sys
 
 sys.path.append('./Evaluation')
-from eval_proposal import ANETproposal
+from Evaluation.eval_proposal import ANETproposal
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -21,7 +21,7 @@ def run_evaluation(ground_truth_filename, proposal_filename,
     average_recall = anet_proposal.avg_recall
     average_nr_proposals = anet_proposal.proposals_per_video
 
-    return (average_nr_proposals, average_recall, recall)
+    return average_nr_proposals, average_recall, recall
 
 
 def plot_metric(opt, average_nr_proposals, average_recall, recall, tiou_thresholds=np.linspace(0.5, 0.95, 10)):

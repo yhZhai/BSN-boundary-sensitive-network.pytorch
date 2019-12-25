@@ -40,7 +40,9 @@ def generateProposals(opt, video_list, video_dict):
     tgap = 1. / tscale
     peak_thres = opt["pgm_threshold"]
 
-    for video_name in video_list:
+    for i, video_name in enumerate(video_list):
+        if (i + 1) % 50 == 0:
+            print('iteration {} / {}'.format(i + 1, len(video_list)))
         tdf = pandas.read_csv("./output/TEM_results/" + video_name + ".csv")
         start_scores = tdf.start.values[:]
         end_scores = tdf.end.values[:]
@@ -147,14 +149,16 @@ def generateFeature(opt, video_list, video_dict):
     num_sample_action = opt["num_sample_action"]
     num_sample_interpld = opt["num_sample_interpld"]
 
-    for video_name in video_list:
+    for i, video_name in enumerate(video_list):
+        if (i + 1) % 50 == 0:
+            print('iteration {} / {}'.format(i + 1, len(video_list)))
         adf = pandas.read_csv("./output/TEM_results/" + video_name + ".csv")
         score_action = adf.action.values[:]
         seg_xmins = adf.xmin.values[:]
         seg_xmaxs = adf.xmax.values[:]
         video_scale = len(adf)
         video_gap = seg_xmaxs[0] - seg_xmins[0]
-        video_extend = video_scale / 4 + 10
+        video_extend = video_scale // 4 + 10
         pdf = pandas.read_csv("./output/PGM_proposals/" + video_name + ".csv")
         video_subset = video_dict[video_name]['subset']
         if video_subset == "training":
@@ -215,15 +219,15 @@ def PGM_proposal_generation(opt):
     video_dict = load_json(opt["video_anno"])
     video_list = video_dict.keys()  # [:199]
     num_videos = len(video_list)
-    num_videos_per_thread = num_videos / opt["pgm_thread"]
+    num_videos_per_thread = num_videos // opt["pgm_thread"]
     processes = []
     for tid in range(opt["pgm_thread"] - 1):
-        tmp_video_list = video_list[tid * num_videos_per_thread:(tid + 1) * num_videos_per_thread]
+        tmp_video_list = list(video_list)[tid * num_videos_per_thread:(tid + 1) * num_videos_per_thread]
         p = mp.Process(target=generateProposals, args=(opt, tmp_video_list, video_dict,))
         p.start()
         processes.append(p)
 
-    tmp_video_list = video_list[(opt["pgm_thread"] - 1) * num_videos_per_thread:]
+    tmp_video_list = list(video_list)[(opt["pgm_thread"] - 1) * num_videos_per_thread:]
     p = mp.Process(target=generateProposals, args=(opt, tmp_video_list, video_dict,))
     p.start()
     processes.append(p)
@@ -236,15 +240,15 @@ def PGM_feature_generation(opt):
     video_dict = getDatasetDict(opt)
     video_list = video_dict.keys()
     num_videos = len(video_list)
-    num_videos_per_thread = num_videos / opt["pgm_thread"]
+    num_videos_per_thread = num_videos // opt["pgm_thread"]
     processes = []
     for tid in range(opt["pgm_thread"] - 1):
-        tmp_video_list = video_list[tid * num_videos_per_thread:(tid + 1) * num_videos_per_thread]
+        tmp_video_list = list(video_list)[tid * num_videos_per_thread:(tid + 1) * num_videos_per_thread]
         p = mp.Process(target=generateFeature, args=(opt, tmp_video_list, video_dict,))
         p.start()
         processes.append(p)
 
-    tmp_video_list = video_list[(opt["pgm_thread"] - 1) * num_videos_per_thread:]
+    tmp_video_list = list(video_list)[(opt["pgm_thread"] - 1) * num_videos_per_thread:]
     p = mp.Process(target=generateFeature, args=(opt, tmp_video_list, video_dict,))
     p.start()
     processes.append(p)

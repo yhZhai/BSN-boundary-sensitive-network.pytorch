@@ -108,7 +108,7 @@ def test_TEM(data_loader, model, epoch, writer, opt):
 def train_PEM(data_loader, model, optimizer, epoch, writer, opt):
     model.train()
     epoch_iou_loss = 0
-
+    losses = AverageMeter()
     for n_iter, (input_data, label_iou) in enumerate(data_loader):
         PEM_output = model(input_data)
         iou_loss = PEM_loss_function(PEM_output, label_iou, model, opt)
@@ -116,6 +116,10 @@ def train_PEM(data_loader, model, optimizer, epoch, writer, opt):
         iou_loss.backward()
         optimizer.step()
         epoch_iou_loss += iou_loss.cpu().detach().numpy()
+
+        losses.update(iou_loss.item())
+        if (n_iter + 1) % opt['print_freq'] == 0:
+            print('[TRAIN] Epoch {}, iter {} / {}, loss: {}'.format(epoch, n_iter + 1, len(data_loader), losses.avg))
 
     writer.add_scalars('data/iou_loss', {'train': epoch_iou_loss / (n_iter + 1)}, epoch)
 
@@ -125,11 +129,15 @@ def train_PEM(data_loader, model, optimizer, epoch, writer, opt):
 def test_PEM(data_loader, model, epoch, writer, opt):
     model.eval()
     epoch_iou_loss = 0
-
+    losses = AverageMeter()
     for n_iter, (input_data, label_iou) in enumerate(data_loader):
         PEM_output = model(input_data)
         iou_loss = PEM_loss_function(PEM_output, label_iou, model, opt)
         epoch_iou_loss += iou_loss.cpu().detach().numpy()
+
+        losses.update(iou_loss.item())
+        if (n_iter + 1) % opt['print_freq'] == 0:
+            print('[TEST] Epoch {}, iter {} / {}, loss: {}'.format(epoch, n_iter + 1, len(data_loader), losses.avg))
 
     writer.add_scalars('data/iou_loss', {'validation': epoch_iou_loss / (n_iter + 1)}, epoch)
 
@@ -249,7 +257,7 @@ def BSN_inference_PEM(opt):
                                               num_workers=4, pin_memory=True, drop_last=False)
 
     for idx, (video_feature, video_xmin, video_xmax, video_xmin_score, video_xmax_score) in enumerate(test_loader):
-        video_name = test_loader.dataset.video_list[idx]
+        video_name = list(test_loader.dataset.video_list)[idx]
         video_conf = model(video_feature).view(-1).detach().cpu().numpy()
         video_xmin = video_xmin.view(-1).cpu().numpy()
         video_xmax = video_xmax.view(-1).cpu().numpy()
@@ -264,6 +272,9 @@ def BSN_inference_PEM(opt):
         df["iou_score"] = video_conf
 
         df.to_csv("./output/PEM_results/" + video_name + ".csv", index=False)
+
+        if (idx + 1) % opt['print_freq'] == 0:
+            print('[INFERENCE] iter {} / {}'.format(idx + 1, len(test_loader)))
 
 
 def main(opt):

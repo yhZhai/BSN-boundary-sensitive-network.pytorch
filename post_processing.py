@@ -79,7 +79,9 @@ def Soft_NMS(df, opt):
 
 
 def video_post_process(opt, video_list, video_dict):
-    for video_name in video_list:
+    for i, video_name in enumerate(video_list):
+        if (i + 1) % 50 == 0:
+            print("iteration {} / {}".format(i + 1, len(video_list)))
         df = pd.read_csv("./output/PEM_results/" + video_name + ".csv")
 
         df['score'] = df.iou_score.values[:] * df.xmin_score.values[:] * df.xmax_score.values[:]
@@ -108,14 +110,14 @@ def BSN_post_processing(opt):
     result_dict = mp.Manager().dict()
 
     num_videos = len(video_list)
-    num_videos_per_thread = num_videos / opt["post_process_thread"]
+    num_videos_per_thread = num_videos // opt["post_process_thread"]
     processes = []
     for tid in range(opt["post_process_thread"] - 1):
-        tmp_video_list = video_list[tid * num_videos_per_thread:(tid + 1) * num_videos_per_thread]
+        tmp_video_list = list(video_list)[tid * num_videos_per_thread:(tid + 1) * num_videos_per_thread]
         p = mp.Process(target=video_post_process, args=(opt, tmp_video_list, video_dict,))
         p.start()
         processes.append(p)
-    tmp_video_list = video_list[(opt["pgm_thread"] - 1) * num_videos_per_thread:]
+    tmp_video_list = list(video_list)[(opt["pgm_thread"] - 1) * num_videos_per_thread:]
     p = mp.Process(target=video_post_process, args=(opt, tmp_video_list, video_dict,))
     p.start()
     processes.append(p)

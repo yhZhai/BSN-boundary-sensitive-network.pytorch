@@ -113,7 +113,7 @@ def parse_opt():
     parser.add_argument(
         '--pem_epoch',
         type=int,
-        default=20)
+        default=30)
     parser.add_argument(
         '--pem_step_size',
         type=int,
@@ -157,7 +157,7 @@ def parse_opt():
     parser.add_argument(
         '--pgm_thread',
         type=int,
-        default=8)
+        default=4)
     parser.add_argument(
         '--num_sample_start',
         type=int,
@@ -187,7 +187,7 @@ def parse_opt():
     parser.add_argument(
         '--post_process_thread',
         type=int,
-        default=8)
+        default=4)
     parser.add_argument(
         '--soft_nms_alpha',
         type=float,
