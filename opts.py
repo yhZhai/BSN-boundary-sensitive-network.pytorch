@@ -83,11 +83,11 @@ def parse_opt():
     parser.add_argument(
         '--tem_epoch',
         type=int,
-        default=20)
+        default=9)
     parser.add_argument(
         '--tem_step_size',
         type=int,
-        default=7)
+        default=3)
     parser.add_argument(
         '--tem_step_gamma',
         type=float,

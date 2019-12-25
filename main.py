@@ -18,6 +18,7 @@ from pgm import PGM_proposal_generation, PGM_feature_generation
 from post_processing import BSN_post_processing
 from eval import evaluation_proposal
 from utils import AverageMeter
+import time
 
 
 def train_TEM(data_loader, model, optimizer, epoch, writer, opt):
@@ -27,13 +28,17 @@ def train_TEM(data_loader, model, optimizer, epoch, writer, opt):
     epoch_end_loss = 0
     epoch_cost = 0
     losses = AverageMeter()
+    gradient_clip = AverageMeter()
+    batch_time = AverageMeter()
     for n_iter, (input_data, label_action, label_start, label_end) in enumerate(data_loader):
+        start_time = time.time()
         TEM_output = model(input_data)
         loss = TEM_loss_function(label_action, label_start, label_end, TEM_output, opt)
         cost = loss["cost"]
 
         optimizer.zero_grad()
         cost.backward()
+        gradient_clip.update(torch.nn.utils.clip_grad_norm_(model.parameters(), 20))
         optimizer.step()
         losses.update(cost.item())
 
@@ -42,8 +47,15 @@ def train_TEM(data_loader, model, optimizer, epoch, writer, opt):
         epoch_end_loss += loss["loss_end"].cpu().detach().numpy()
         epoch_cost += loss["cost"].cpu().detach().numpy()
 
+        end_time = time.time()
+        batch_time.update(end_time - start_time)
+
         if (n_iter + 1) % opt['print_freq'] == 0:
-            print('[TRAIN] Epoch {}, iter {} / {}, loss: {}'.format(epoch, n_iter + 1, len(data_loader), losses.avg))
+            print('[TRAIN] Epoch {}, iter {} / {}, loss: {}, gradient clip: {}, time: {:.5f}s'.format(epoch, n_iter + 1,
+                                                                                       len(data_loader),
+                                                                                       losses.avg,
+                                                                                       gradient_clip.avg,
+                                                                                       batch_time.avg))
 
     writer.add_scalars('data/action', {'train': epoch_action_loss / (n_iter + 1)}, epoch)
     writer.add_scalars('data/start', {'train': epoch_start_loss / (n_iter + 1)}, epoch)
@@ -141,18 +153,19 @@ def BSN_Train_TEM(opt):
 
     train_loader = torch.utils.data.DataLoader(VideoDataSet(opt, subset="train"),
                                                batch_size=model.module.batch_size, shuffle=True,
-                                               num_workers=4, pin_memory=True, drop_last=False)
+                                               num_workers=4, pin_memory=True, drop_last=True)
 
     test_loader = torch.utils.data.DataLoader(VideoDataSet(opt, subset="validation"),
                                               batch_size=model.module.batch_size, shuffle=False,
-                                              num_workers=4, pin_memory=True, drop_last=False)
+                                              num_workers=4, pin_memory=True, drop_last=True)
 
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=opt["tem_step_size"], gamma=opt["tem_step_gamma"])
 
     for epoch in range(opt["tem_epoch"]):
         train_TEM(train_loader, model, optimizer, epoch, writer, opt)
         scheduler.step()
-        test_TEM(test_loader, model, epoch, writer, opt)
+        if (epoch + 1) % 3 == 0:
+            test_TEM(test_loader, model, epoch, writer, opt)
     writer.close()
 
 
